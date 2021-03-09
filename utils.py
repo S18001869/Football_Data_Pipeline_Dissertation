@@ -56,7 +56,7 @@ def convert_data_type_names(x):
 def clean_query(query):
     """Remove any non-alphabetic symbols from query text
     """
-    query=query.replace('<', 'u')
+    query = query.replace('<', 'u')
     query = query.replace('>', 'o')
     # Define all the symbols we want to be allowed in the text
     regex = re.compile("[^a-zA-Z0123456789 ,()_']")
