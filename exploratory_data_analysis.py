@@ -57,3 +57,46 @@ teamform = pd.merge(teamform, test, how='left', on=['team', 'id'])
 # Insights and questions:
 # The relationship between goals scored and if the team wins next game
 
+# Does a half-time lead make it more likely the team will win?
+# Get percent of Full Time wins for Home Teams
+percent_of_home_wins = len(result[result["ftr"] == "H"]) / len(result)  # Show bool of if ftr is H
+# Get percent of Half Time Leads for Home Teams
+percent_of_halftime_lead_h = len(result[result["htr"] == "H"]) / len(result)
+percent_of_halftime_lead_d = len(result[result["htr"] == "D"]) / len(result)
+percent_of_halftime_lead_a = len(result[result["htr"] == "A"]) / len(result)
+# I know that the percent of full time wins for the home team is 46%.
+# I found:
+# The percent of half time leads for the Home team is 35%.
+# The percent of half time draws for the Home team is 37%.
+# The percent of half time deficits for the Home team is 27%.
+# This suggests that the Home Team is most likely to see the first half out with a draw.
+# However, if the Home Team is winning at half time, this does not indicate they will win the game at Full Time.
+# It does suggest that the Home Team is more likely to remain level by half-time
+# It also suggests the Home Team is more likely to score in the second-half.
+
+# Calculate the Attacking and Defending strength of each team
+# Get average goals from last 5 games to determine attacking strength
+"""if teamform["goals_for_l5"] == range(0, 1):
+    attacking_strength_l5 = "Low"
+elif teamform["goals_for_l5"] == range(1, 2):
+    attacking_strength_l5 = "Medium"
+elif teamform["goals_for_l5"] >= 2:
+    attacking_strength_l5 = "High"""""
+# Use Pandas Rank to decide the rank and remove human bias
+# Compute numerical data ranks (1 through n) along axis
+teamform['default_rank'] = teamform['goals_for_l5'].rank()
+teamform['max_rank'] = teamform['goals_for_l5'].rank(method='max')
+teamform['NA_bottom'] = teamform['goals_for_l5'].rank(na_option='bottom')
+teamform['pct_rank'] = teamform['goals_for_l5'].rank(pct=True)
+teamform
+if teamform['pct_rank'] < 0.33:
+    attacking_strength_l5 = "low"
+elif teamform['pct_rank'] > 0.66:
+    attacking_strength_l5 = "high"
+else:
+    attacking_strength_l5 = "medium"
+
+# Now I need to create the column "attacking_strength_l5" in team form
+
+
+# Get average goals conceded in the last 5 games
