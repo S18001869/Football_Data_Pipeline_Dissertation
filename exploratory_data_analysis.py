@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 
 # We put all functions inside their own script to make this script cleaner
 from utils import connect_to_db, run_query, convert_data_type_names, clean_query
@@ -76,19 +77,13 @@ percent_of_halftime_lead_a = len(result[result["htr"] == "A"]) / len(result)
 
 # Calculate the Attacking and Defending strength of each team
 # Get average goals from last 5 games to determine attacking strength
-"""if teamform["goals_for_l5"] == range(0, 1):
-    attacking_strength_l5 = "Low"
-elif teamform["goals_for_l5"] == range(1, 2):
-    attacking_strength_l5 = "Medium"
-elif teamform["goals_for_l5"] >= 2:
-    attacking_strength_l5 = "High"""""
 # Use Pandas Rank to decide the rank and remove human bias
 # Compute numerical data ranks (1 through n) along axis
-teamform['default_rank'] = teamform['goals_for_l5'].rank()
-teamform['max_rank'] = teamform['goals_for_l5'].rank(method='max')
-teamform['NA_bottom'] = teamform['goals_for_l5'].rank(na_option='bottom')
+# teamform['default_rank'] = teamform['goals_for_l5'].rank()
+# teamform['max_rank'] = teamform['goals_for_l5'].rank(method='max')
+# teamform['NA_bottom'] = teamform['goals_for_l5'].rank(na_option='bottom')
 teamform['pct_rank'] = teamform['goals_for_l5'].rank(pct=True)
-teamform
+
 if teamform['pct_rank'] < 0.33:
     attacking_strength_l5 = "low"
 elif teamform['pct_rank'] > 0.66:
@@ -97,6 +92,24 @@ else:
     attacking_strength_l5 = "medium"
 
 # Now I need to create the column "attacking_strength_l5" in team form
+# Create a list of conditions
+conditions = [
+    (teamform['pct_rank'] <= 0.33),
+    (teamform['pct_rank'] >= 0.66),
+    (teamform['pct_rank'] > 0.33) & (teamform['pct_rank'] < 0.66)
+     ]
+
+# Create a list of values we want to assign for each condition
+attack_form_values = ["low", "high", "medium"]
+
+# Create a new column and use np.select to assign values
+teamform["attacking_strength_l5"] = np.select(conditions, attack_form_values)
+
+# Display updated DataFrame
+teamform.head()
+
+# Add a Column to check whether the team won or not
+
 
 
 # Get average goals conceded in the last 5 games
