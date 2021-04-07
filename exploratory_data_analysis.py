@@ -50,11 +50,12 @@ teamform = teamform.append(df_away)
 assert len(teamform) == len(result) * 2  # Testing new dataframe is the correct size
 
 # Team Form for past 5 games (excluding most recent game)
-# Lag goals for, so we dont generate features from the game we are trying to predict
-# teamform['goalsfor_lagged'] = teamform.groupby('team').goalsfor.shift(1)
-# test = teamform.groupby("team").goalsfor_lagged.rolling(5, min_periods=5).mean().reset_index()
-# test.columns = ['team', 'id', 'goals_for_l5']
-# teamform = pd.merge(teamform, test, how='left', on=['team', 'id'])
+# Lag goals for, so we don't generate features from the game we are trying to predict
+teamform['goalsfor_lagged'] = teamform.groupby('team').goalsfor.shift(1)
+test = teamform.groupby("team").goalsfor_lagged.rolling(5, min_periods=5).mean().reset_index()
+test.columns = ['team', 'id', 'goals_for_l5']
+teamform = pd.merge(teamform, test, how='left', on=['team', 'id'])
+
 
 def add_rolling_average(df, column='goalsfor', window=5, min_periods=5):
     df[f'{column}_lagged'] = df.groupby('team')[column].shift(1)
@@ -63,6 +64,7 @@ def add_rolling_average(df, column='goalsfor', window=5, min_periods=5):
     df = pd.merge(df, test, how='left', on=['team', 'id'])
     df.drop(f'{column}_lagged', axis=1, inplace=True)
     return df
+
 
 teamform = add_rolling_average(teamform, column='goalsfor', window=5, min_periods=5)
 teamform = add_rolling_average(teamform, column='goalsagainst', window=5, min_periods=5)
@@ -121,7 +123,5 @@ teamform["attacking_strength_l5"] = np.select(conditions, attack_form_values)
 teamform.head()
 
 # Add a Column to check whether the team won or not
-
-
 
 # Get average goals conceded in the last 5 games
