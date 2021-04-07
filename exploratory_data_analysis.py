@@ -143,3 +143,47 @@ teamform['result'] = teamform.apply(get_result, axis=1)
 
 # Get average goals conceded in the last 5 games
 
+
+
+# VISUALISATION
+
+import plotly.express as pe
+import plotly.io as pio
+pio.renderers.default = 'browser'
+
+plot = pe.histogram(teamform, 'goalsfor')
+plot.show()
+
+plot = pe.histogram(teamform, 'attacking_strength_l5')
+plot.show()
+
+
+
+# MODEL BUILDING
+
+import sklearn
+
+# Add feature names here
+features = []
+
+# Scale the data (also known as Standardization). This makes the data have a mean of 0 and a
+# standard deviation of 1. This is required by some models, like linear models and neural networks
+scaler = sklearn.preprocessing.StandardScaler()
+teamform[features] = scaler.fit_transform(teamform[features])
+
+# Split data into test and train
+from sklearn.model_selection import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(teamform[features], teamform['result'])
+
+# Create a logistic regression classifier
+model = sklearn.linear_model.LogisticRegression()
+
+model.fit(X_train, y_train)
+
+# Generate new predictions
+preds = model.predict(X_test)
+
+# Evaluate model in terms of roc_auc
+from sklearn.metrics import roc_auc_score
+score = roc_auc_score(y_test, preds)
+
