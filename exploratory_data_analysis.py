@@ -1,5 +1,10 @@
 import pandas as pd
 import numpy as np
+import plotly.express as pe
+import plotly.io as pio
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import roc_auc_score
+
 
 # We put all functions inside their own script to make this script cleaner
 from utils import connect_to_db, run_query, convert_data_type_names, clean_query
@@ -147,8 +152,6 @@ teamform['result'] = teamform.apply(get_result, axis=1)
 
 # VISUALISATION
 
-import plotly.express as pe
-import plotly.io as pio
 pio.renderers.default = 'browser'
 
 plot = pe.histogram(teamform, 'goalsfor')
@@ -172,7 +175,6 @@ scaler = sklearn.preprocessing.StandardScaler()
 teamform[features] = scaler.fit_transform(teamform[features])
 
 # Split data into test and train
-from sklearn.model_selection import train_test_split
 X_train, X_test, y_train, y_test = train_test_split(teamform[features], teamform['result'])
 
 # Create a logistic regression classifier
@@ -184,6 +186,5 @@ model.fit(X_train, y_train)
 preds = model.predict(X_test)
 
 # Evaluate model in terms of roc_auc
-from sklearn.metrics import roc_auc_score
 score = roc_auc_score(y_test, preds)
 
