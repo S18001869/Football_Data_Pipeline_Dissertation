@@ -93,30 +93,39 @@ percent_of_halftime_lead_a = len(result[result["htr"] == "A"]) / len(result)
 # Get average goals from last 5 games to determine attacking strength
 # Use Pandas Rank to decide the rank and remove human bias
 # Compute numerical data ranks (1 through n) along axis
-# teamform['default_rank'] = teamform['goals_for_l5'].rank()
-# teamform['max_rank'] = teamform['goals_for_l5'].rank(method='max')
-# teamform['NA_bottom'] = teamform['goals_for_l5'].rank(na_option='bottom')
-teamform['pct_rank'] = teamform['goalsfor_l5'].rank(pct=True)
 
-# Now I need to create the column "attacking_strength_l5" in team form
-# Create a list of conditions
-conditions = [
-    (teamform['pct_rank'] <= 0.33),
-    (teamform['pct_rank'] >= 0.66),
-    (teamform['pct_rank'] > 0.33) & (teamform['pct_rank'] < 0.66)
-]
+# Create a Ranking function that I can reuse on different columns
 
-# Create a list of values we want to assign for each condition
-attack_form_values = ["low", "high", "medium"]
 
-# Create a new column and use np.select to assign values
-teamform["attacking_strength_l5"] = np.select(conditions, attack_form_values)
+def ranking_function(teamform, col_name, new_col_name, ascending=True):
 
-# Display updated DataFrame
-teamform.head()
+    teamform['pct_rank'] = teamform[col_name].rank(ascending=ascending, pct=True)
+
+    # Now I need to create the column "attacking_strength_l5" in team form
+    # Create a list of conditions
+    conditions = [
+        (teamform['pct_rank'] <= 0.33),
+        (teamform['pct_rank'] >= 0.66),
+        (teamform['pct_rank'] > 0.33) & (teamform['pct_rank'] < 0.66)
+    ]
+
+    # Create a list of values we want to assign for each condition
+    attack_form_values = ["low", "high", "medium"]
+
+    # Create a new column and use np.select to assign values
+    teamform[new_col_name] = np.select(conditions, attack_form_values)
+    return teamform
+
+
+teamform = ranking_function(teamform, "goalsfor", "attacking_strength_l5" )
+teamform = ranking_function(teamform, "goalsagainst", "defensive_strength_l5", ascending=False)
+
+# Use this to filter results in the teamform dataframe
+# liverpool = teamform[teamform['team'] == 'Liverpool']
 
 # Add a Column to check whether the team won or not
-liverpool = teamform[teamform['team'] == 'Liverpool']
+# First define the get_result function
+
 
 def get_result(x):
     if x['goalsfor'] > x['goalsagainst']:
@@ -126,7 +135,10 @@ def get_result(x):
     else:
         return "D"
 
+# Applies the 'get_result' function to every row in teamform, adds results to a new col called "result"
+
 teamform['result'] = teamform.apply(get_result, axis=1)
+
 # teamform['result'] = teamform.apply(lambda x: get_result(x), axis=1)
 
 # Get average goals conceded in the last 5 games
