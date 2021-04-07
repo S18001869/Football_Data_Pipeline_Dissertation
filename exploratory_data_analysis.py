@@ -4,6 +4,7 @@ import plotly.express as pe
 import plotly.io as pio
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_auc_score
+import sklearn
 
 
 # We put all functions inside their own script to make this script cleaner
@@ -160,11 +161,15 @@ plot.show()
 plot = pe.histogram(teamform, 'attacking_strength_l5')
 plot.show()
 
+# this histogram has a poisson distribution, some models assume that features follow a normal distribution
+# this might mean we can't use certain models without transforming the feature
+
+
+# JOIN HOME TEAM AND AWAY TEAM FEATURES ONTO ONE ROW, RATHER THAN HAVING THEM AS SEPERATE RECORDS
+# WE DO THIS AS OTHERWISE WE ARE MAKING A PREDICTION WITH HALF OF THE DATA
 
 
 # MODEL BUILDING
-
-import sklearn
 
 # Add feature names here
 features = []
