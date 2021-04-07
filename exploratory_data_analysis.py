@@ -94,14 +94,7 @@ percent_of_halftime_lead_a = len(result[result["htr"] == "A"]) / len(result)
 # teamform['default_rank'] = teamform['goals_for_l5'].rank()
 # teamform['max_rank'] = teamform['goals_for_l5'].rank(method='max')
 # teamform['NA_bottom'] = teamform['goals_for_l5'].rank(na_option='bottom')
-teamform['pct_rank'] = teamform['goals_for_l5'].rank(pct=True)
-
-if teamform['pct_rank'] < 0.33:
-    attacking_strength_l5 = "low"
-elif teamform['pct_rank'] > 0.66:
-    attacking_strength_l5 = "high"
-else:
-    attacking_strength_l5 = "medium"
+teamform['pct_rank'] = teamform['goalsfor_l5'].rank(pct=True)
 
 # Now I need to create the column "attacking_strength_l5" in team form
 # Create a list of conditions
@@ -109,7 +102,7 @@ conditions = [
     (teamform['pct_rank'] <= 0.33),
     (teamform['pct_rank'] >= 0.66),
     (teamform['pct_rank'] > 0.33) & (teamform['pct_rank'] < 0.66)
-     ]
+]
 
 # Create a list of values we want to assign for each condition
 attack_form_values = ["low", "high", "medium"]
@@ -121,7 +114,17 @@ teamform["attacking_strength_l5"] = np.select(conditions, attack_form_values)
 teamform.head()
 
 # Add a Column to check whether the team won or not
+liverpool = teamform[teamform['team'] == 'Liverpool']
 
+def get_result(x):
+    if x['goalsfor'] > x['goalsagainst']:
+        return "W"
+    elif x['goalsfor'] < x['goalsagainst']:
+        return "L"
+    else:
+        return "D"
 
+teamform['result'] = teamform.apply(get_result, axis=1)
+# teamform['result'] = teamform.apply(lambda x: get_result(x), axis=1)
 
 # Get average goals conceded in the last 5 games
