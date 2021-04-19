@@ -53,24 +53,19 @@ df_away.loc[:, "ishome"] = False
 # Split home and away teams into individual rows
 teamform = df_home
 teamform = teamform.append(df_away)
+teamform = teamform.sort_values('id')
 assert len(teamform) == len(result) * 2  # Testing new dataframe is the correct size
 
-# Team Form for past 5 games (excluding most recent game)
-# Lag goals for, so we don't generate features from the game we are trying to predict
-teamform['goalsfor_lagged'] = teamform.groupby('team').goalsfor.shift(1)
-test = teamform.groupby("team").goalsfor_lagged.rolling(5, min_periods=5).mean().reset_index()
-test.columns = ['team', 'id', 'goals_for_l5']
-teamform = pd.merge(teamform, test, how='left', on=['team', 'id'])
-
-
+# Make a rolling average window for features
 def add_rolling_average(df, column='goalsfor', window=5, min_periods=5):
+    # Shift so we dont use the current game score as part of the average
     df[f'{column}_lagged'] = df.groupby('team')[column].shift(1)
     test = df.groupby("team")[f"{column}_lagged"].rolling(window, min_periods).mean().reset_index()
-    test.columns = ['team', 'id', f"{column}_l{window}"]
-    df = pd.merge(df, test, how='left', on=['team', 'id'])
+    test.columns = ['team', 'index', f"{column}_l{window}"]
+    df['index'] = df.index.copy()
+    df = pd.merge(df, test, how='left', on=['team', 'index'])
     df.drop(f'{column}_lagged', axis=1, inplace=True)
     return df
-
 
 teamform = add_rolling_average(teamform, column='goalsfor', window=5, min_periods=5)
 teamform = add_rolling_average(teamform, column='goalsagainst', window=5, min_periods=5)
@@ -158,8 +153,13 @@ teamform['result'] = teamform.apply(get_result, axis=1)
 pio.renderers.default = 'browser'
 
 # Plot goals for each match for home team
-plot = pe.histogram(teamform, 'goalsfor', color='ishome')
-plot.show()
+import plotly
+home_teams = teamform[teamform['ishome']==True]
+away_teams = teamform[teamform['ishome']==False]
+home_goals = pe.histogram(home_teams, x='goalsfor', title='Goals scored by home team (histogram)')
+plotly.offline.plot(home_goals)
+away_goals = pe.histogram(away_teams, x='goalsfor', title='Goals scored by away team (histogram)')
+plotly.offline.plot(away_goals)
 
 
 # Plot goals for each match
@@ -179,23 +179,68 @@ plot.show()
 
 # JOIN HOME TEAM AND AWAY TEAM FEATURES ONTO ONE ROW, RATHER THAN HAVING THEM AS SEPERATE RECORDS
 # WE DO THIS AS OTHERWISE WE ARE MAKING A PREDICTION WITH HALF OF THE DATA
+full_teams = pd.merge(home_teams, away_teams, on=['id', 'date']).reset_index(drop=True)
+
+def assign_result(x):
+    if x == 'W':
+        return 'H'
+    elif x == 'L':
+        return 'A'
+    else:
+        return 'D'
+
+# Add a column for result that is home, draw or away
+for i in range(len(full_teams)):
+    full_teams.loc[i, 'final_result'] = assign_result(full_teams.loc[i, 'result_x'])
 
 
 # MODEL BUILDING
 
 # Add feature names here
-features = []
+features = [
+        # Home team features
+       'goalsfor_l5_x', 'goalsagainst_l5_x', 'pct_rank_x',
+       'attacking_strength_l5_x', 'defensive_strength_l5_x',
+        # Away team features
+       'goalsfor_l5_y', 'goalsagainst_l5_y', 'pct_rank_y',
+       'attacking_strength_l5_y', 'defensive_strength_l5_y'
+]
+
+# Make sure categorical columns are one-hot encoded (this means trhey only contain 1 or 0). This is because
+# models cant deal with string categories
+categorical_cols = ['attacking_strength_l5_x', 'defensive_strength_l5_x',
+                    'attacking_strength_l5_y', 'defensive_strength_l5_y']
+categorical_dummies = pd.get_dummies(full_teams[categorical_cols])
+# Add these one-hot encoded columns to the data
+full_teams = pd.concat([full_teams.reset_index(drop=True), categorical_dummies.reset_index(drop=True)], axis=1)
+# Drop the original columns
+full_teams = full_teams.drop(categorical_cols, axis=1)
+# Redefine features wit hthe new columns
+features = [
+        # Home team features
+       'goalsfor_l5_x', 'goalsagainst_l5_x',
+        # Away team features
+       'goalsfor_l5_y', 'goalsagainst_l5_y',
+] + list(categorical_dummies.columns)
+
+# Remove null values as  the modcel cant handle them
+full_teams = full_teams.dropna()
+
+# Drop null values as the model cant deal with NULLs
+y = full_teams['final_result']
+X = full_teams[features]
 
 # Scale the data (also known as Standardization). This makes the data have a mean of 0 and a
 # standard deviation of 1. This is required by some models, like linear models and neural networks
 scaler = sklearn.preprocessing.StandardScaler()
-teamform[features] = scaler.fit_transform(teamform[features])
+full_teams[features] = scaler.fit_transform(full_teams[features])
 
 # Split data into test and train
-X_train, X_test, y_train, y_test = train_test_split(teamform[features], teamform['result'])
+X_train, X_test, y_train, y_test = train_test_split(full_teams[features], full_teams['final_result'])
 
-# Create a logistic regression classifier
-model = sklearn.linear_model.LogisticRegression()
+# Create a random forest classifier
+from sklearn.ensemble import RandomForestClassifier
+model = RandomForestClassifier()
 
 model.fit(X_train, y_train)
 
@@ -203,5 +248,6 @@ model.fit(X_train, y_train)
 preds = model.predict(X_test)
 
 # Evaluate model in terms of roc_auc
-score = roc_auc_score(y_test, preds)
+from sklearn.metrics import accuracy_score
+score = accuracy_score(y_test, preds)
 
