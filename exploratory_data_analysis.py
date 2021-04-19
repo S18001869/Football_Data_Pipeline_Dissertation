@@ -128,6 +128,8 @@ teamform = ranking_function(teamform, "goalsagainst", "defensive_strength_l5", a
 
 # Use this to filter results in the teamform dataframe
 # liverpool = teamform[teamform['team'] == 'Liverpool']
+# HomeTeamsOnly = teamform[teamform['isHome'==True]
+
 
 # Add a Column to check whether the team won or not
 # First define the get_result function
@@ -155,11 +157,21 @@ teamform['result'] = teamform.apply(get_result, axis=1)
 
 pio.renderers.default = 'browser'
 
-plot = pe.histogram(teamform, 'goalsfor')
+# Plot goals for each match for home team
+plot = pe.histogram(teamform, 'goalsfor', color='ishome')
 plot.show()
 
-plot = pe.histogram(teamform, 'attacking_strength_l5')
-plot.show()
+
+# Plot goals for each match
+#plot = pe.histogram(teamform, 'goalsfor')
+#plot.show()
+
+# Plot goals against each match
+#plot = pe.histogram(teamform, 'goalsagainst')
+#plot.show()
+
+#plot = pe.histogram(teamform, 'attacking_strength_l5')
+#plot.show()
 
 # this histogram has a poisson distribution, some models assume that features follow a normal distribution
 # this might mean we can't use certain models without transforming the feature
