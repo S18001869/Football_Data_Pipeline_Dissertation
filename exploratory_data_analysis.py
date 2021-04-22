@@ -56,7 +56,13 @@ teamform = teamform.append(df_away)
 teamform = teamform.sort_values('id')
 assert len(teamform) == len(result) * 2  # Testing new dataframe is the correct size
 
+<<<<<<< Updated upstream
 # Make a rolling average window for features
+=======
+# Team Form for past 5 games (excluding most recent game)
+# Lag goals for, so we don't generate features from the game we are trying to predict
+
+>>>>>>> Stashed changes
 def add_rolling_average(df, column='goalsfor', window=5, min_periods=5):
     # Shift so we dont use the current game score as part of the average
     df[f'{column}_lagged'] = df.groupby('team')[column].shift(1)
@@ -94,6 +100,7 @@ percent_of_halftime_lead_a = len(result[result["htr"] == "A"]) / len(result)
 # Get average goals from last 5 games to determine attacking strength
 # Use Pandas Rank to decide the rank and remove human bias
 # Compute numerical data ranks (1 through n) along axis
+<<<<<<< Updated upstream
 
 # Create a Ranking function that I can reuse on different columns
 
@@ -125,6 +132,29 @@ teamform = ranking_function(teamform, "goalsagainst", "defensive_strength_l5", a
 # liverpool = teamform[teamform['team'] == 'Liverpool']
 # HomeTeamsOnly = teamform[teamform['isHome'==True]
 
+=======
+# teamform['default_rank'] = teamform['goals_for_l5'].rank()
+# teamform['max_rank'] = teamform['goals_for_l5'].rank(method='max')
+# teamform['NA_bottom'] = teamform['goals_for_l5'].rank(na_option='bottom')
+teamform['pct_rank'] = teamform['goalsfor_l5'].rank(pct=True)
+
+# Now I need to create the column "attacking_strength_l5" in team form
+# Create a list of conditions
+conditions = [
+    (teamform['pct_rank'] <= 0.33),
+    (teamform['pct_rank'] >= 0.66),
+    (teamform['pct_rank'] > 0.33) & (teamform['pct_rank'] < 0.66)
+     ]
+
+# Create a list of values we want to assign for each condition
+attack_form_values = ["low", "high", "medium"]
+
+# Create a new column and use np.select to assign values
+teamform["attacking_strength_l5"] = np.select(conditions, attack_form_values)
+
+# Display updated DataFrame
+teamform.head()
+>>>>>>> Stashed changes
 
 # Add a Column to check whether the team won or not
 # First define the get_result function
@@ -143,6 +173,7 @@ def get_result(x):
 teamform['result'] = teamform.apply(get_result, axis=1)
 
 # teamform['result'] = teamform.apply(lambda x: get_result(x), axis=1)
+
 
 # Get average goals conceded in the last 5 games
 
