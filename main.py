@@ -94,7 +94,7 @@ def GetResults(link, dropresults):
 
 if __name__ == '__main__':
 
-    dlinks = generate_download_links(2018, 2020)
+    dlinks = generate_download_links(2010, 2020)
     dropcondition = 0 # Set dropcondition to 0
 
     for footballlinks in dlinks:  # For every element in dlinks, call GetResults and pass the link

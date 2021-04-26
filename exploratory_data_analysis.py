@@ -37,15 +37,15 @@ result.groupby("hometeam").fthg.rolling(
 # This is okay, but I want overall form
 # I need one row per team per game to find the Home Form value
 result["id"] = result.index
-homecols = ["id", "date", "hometeam", "fthg", "ftag"]
-homecolsnew = ["id", "date", "team", "goalsfor", "goalsagainst"]
+homecols = ["id", "date", "hometeam", "fthg", "ftag", "season"]
+homecolsnew = ["id", "date", "team", "goalsfor", "goalsagainst", "season"]
 df_home = result[homecols]
 df_home.columns=homecolsnew
 df_home.loc[:, "ishome"] = True
 
 # Team Form based on the Away Goals in previous 5 games
-awaycols = ["id", "date", "awayteam", "ftag", "fthg"]
-awaycolsnew = ["id", "date", "team", "goalsfor", "goalsagainst"]
+awaycols = ["id", "date", "awayteam", "ftag", "fthg", "season"]
+awaycolsnew = ["id", "date", "team", "goalsfor", "goalsagainst", "season"]
 df_away = result[awaycols]
 df_away.columns=awaycolsnew
 df_away.loc[:, "ishome"] = False
@@ -190,17 +190,15 @@ away_goals = pe.histogram(away_teams, x='goalsfor', title='Goals scored by away 
 plotly.offline.plot(away_goals)
 teamform['won'] = teamform['result'] == 'W' # Adds col to teamform saying if team won
 teamform.groupby(['team']).won.mean().reset_index() # The win rate of all teams
-team_summary = teamform.groupby(['team'])['won', 'goalsfor_l5', 'goalsagainst_l5'].mean().reset_index()
+team_summary = teamform.groupby(['team', 'season'])['won', 'goalsfor_l5', 'goalsagainst_l5'].mean().reset_index()
+team_summary.corr() # This gives me a correlation matrix. Easy way to visualise data.
 
-# Do teams with good form in the last 5 games mean Higher Win Rate?
-plot = pe.scatter(team_summary, x='won', y='goalsfor_l5')
+
+# Does more goals in the last 5 games equate to a higher win rate?
+plot = pe.scatter(team_summary, x='won', y='goalsfor_l5', labels='season', color='team')
 plot.show()
-
-
-
-home_wins = pe.histogram(home_teams, x=), title='Home Team Overall Wins'
-plotly.offline.plot(home_wins)
-plotly.offline.plot()
+# This plot has a positive correllation suggesting a better attacking strength based on form equates to a higher win rate.
+# This would make a good feature.
 
 # Plot goals for each match
 #plot = pe.histogram(teamform, 'goalsfor')
