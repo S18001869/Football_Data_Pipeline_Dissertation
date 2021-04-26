@@ -22,6 +22,8 @@ def GetResults(link, dropresults):
 
     # Load data
     df = pd.read_csv(link)
+    # Add season to the data
+    df['season'] = link.split('/')[-2]
     # Create connection to DB
     conn = connect_to_db('db.sqlite')
     # Create the cursor (which you use to run queries)
