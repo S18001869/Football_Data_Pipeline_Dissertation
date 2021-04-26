@@ -24,11 +24,10 @@ def GetResults(link, dropresults):
     df = pd.read_csv(link)
     # Create connection to DB
     conn = connect_to_db('db.sqlite')
-    # Create the cursor (which you use to run queries)
+    # Create the cursor
     cursor = conn.cursor()
 
-    # Convert column names to lower case so the names are easier to write.
-    # The code below is called a 'list comprehension', google it
+    # Convert column names to lower case (easier to write)
     df.columns = [col.lower() for col in df.columns]
     # Convert 'as' to 'away_shots' and 'hs' to 'home_shots'
     # We do this because 'as' is a command in SQL so it cant be a column name
