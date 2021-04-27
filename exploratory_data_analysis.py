@@ -124,8 +124,8 @@ def ranking_function(teamform, col_name, new_col_name, ascending=True):
     return teamform
 
 
-teamform = ranking_function(teamform, "goalsfor", "attacking_strength_l5" )
-teamform = ranking_function(teamform, "goalsagainst", "defensive_strength_l5", ascending=False)
+teamform = ranking_function(teamform, "goalsfor_l5", "attacking_strength_l5" )
+teamform = ranking_function(teamform, "goalsagainst_l5", "defensive_strength_l5", ascending=False)
 
 # Use this to filter results in the teamform dataframe
 # liverpool = teamform[teamform['team'] == 'Liverpool']
@@ -196,12 +196,6 @@ team_summary = teamform.groupby(['team'])['won', 'goalsfor_l5', 'goalsagainst_l5
 plot = pe.scatter(team_summary, x='won', y='goalsfor_l5')
 plot.show()
 
-
-
-home_wins = pe.histogram(home_teams, x=), title='Home Team Overall Wins'
-plotly.offline.plot(home_wins)
-plotly.offline.plot()
-
 # Plot goals for each match
 #plot = pe.histogram(teamform, 'goalsfor')
 #plot.show()
@@ -234,15 +228,17 @@ for i in range(len(full_teams)):
     full_teams.loc[i, 'final_result'] = assign_result(full_teams.loc[i, 'result_x'])
 
 
+test = teamform[teamform['team'] == 'Liverpool']
+
 # MODEL BUILDING
 
 # Add feature names here
 features = [
         # Home team features
-       'goalsfor_l5_x', 'goalsagainst_l5_x', 'pct_rank_x',
+       'goalsfor_l5_x', 'goalsagainst_l5_x',
        'attacking_strength_l5_x', 'defensive_strength_l5_x',
         # Away team features
-       'goalsfor_l5_y', 'goalsagainst_l5_y', 'pct_rank_y',
+       'goalsfor_l5_y', 'goalsagainst_l5_y',
        'attacking_strength_l5_y', 'defensive_strength_l5_y'
 ]
 
@@ -291,3 +287,5 @@ preds = model.predict(X_test)
 from sklearn.metrics import accuracy_score
 score = accuracy_score(y_test, preds)
 
+feature_importances = pd.Series(model.feature_importances_)
+feature_importances.index = X_train.columns
