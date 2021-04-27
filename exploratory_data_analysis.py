@@ -37,15 +37,15 @@ result.groupby("hometeam").fthg.rolling(
 # This is okay, but I want overall form
 # I need one row per team per game to find the Home Form value
 result["id"] = result.index
-homecols = ["id", "date", "hometeam", "fthg", "ftag"]
-homecolsnew = ["id", "date", "team", "goalsfor", "goalsagainst"]
+homecols = ["id", "date", "hometeam", "fthg", "ftag", "hc", "season"]
+homecolsnew = ["id", "date", "team", "goalsfor", "goalsagainst", "hc", "season"]
 df_home = result[homecols]
 df_home.columns=homecolsnew
 df_home.loc[:, "ishome"] = True
 
 # Team Form based on the Away Goals in previous 5 games
-awaycols = ["id", "date", "awayteam", "ftag", "fthg"]
-awaycolsnew = ["id", "date", "team", "goalsfor", "goalsagainst"]
+awaycols = ["id", "date", "awayteam", "ftag", "fthg", "ac", "season"]
+awaycolsnew = ["id", "date", "team", "goalsfor", "goalsagainst", "ac", "season"]
 df_away = result[awaycols]
 df_away.columns=awaycolsnew
 df_away.loc[:, "ishome"] = False
@@ -124,8 +124,8 @@ def ranking_function(teamform, col_name, new_col_name, ascending=True):
     return teamform
 
 
-teamform = ranking_function(teamform, "goalsfor_l5", "attacking_strength_l5" )
-teamform = ranking_function(teamform, "goalsagainst_l5", "defensive_strength_l5", ascending=False)
+teamform = ranking_function(teamform, "goalsfor", "attacking_strength_l5" )
+teamform = ranking_function(teamform, "goalsagainst", "defensive_strength_l5", ascending=False)
 
 # Use this to filter results in the teamform dataframe
 # liverpool = teamform[teamform['team'] == 'Liverpool']
@@ -188,21 +188,43 @@ home_goals = pe.histogram(home_teams, x='goalsfor', title='Goals scored by home 
 plotly.offline.plot(home_goals)
 away_goals = pe.histogram(away_teams, x='goalsfor', title='Goals scored by away team (histogram)')
 plotly.offline.plot(away_goals)
-teamform['won'] = teamform['result'] == 'W' # Adds col to teamform saying if team won
-teamform.groupby(['team']).won.mean().reset_index() # The win rate of all teams
-team_summary = teamform.groupby(['team'])['won', 'goalsfor_l5', 'goalsagainst_l5'].mean().reset_index()
 
-# Do teams with good form in the last 5 games mean Higher Win Rate?
-plot = pe.scatter(team_summary, x='won', y='goalsfor_l5')
-plot.show()
+# Team Form : Add columns
+teamform['won'] = teamform['result'] == 'W'  # Adds "won" col to teamform df stating if team won
+teamform['lost'] = teamform['result'] == 'L'  # Adds "lost" col to teamform stating if team lost
+teamform.groupby(['team']).won.mean().reset_index()  # The win rate of all teams
+teamform.groupby(['team']).lost.mean().reset_index()  # The loss rate of all teams
+del teamform['home_corners']
+# Team Summary : Add columns
+team_summary = teamform.groupby(['team', 'season'])['won', 'lost', 'hc', 'ac', 'goalsfor_l5', 'goalsagainst_l5'].mean().reset_index()
+team_summary.corr() # This gives me a correlation matrix. Easy way to visualise data.
+
+
+# Does more goals in the last 5 games equate to a higher win rate?
+plot_goalsFor = pe.scatter(team_summary, x='won', y='goalsfor_l5', labels='season', color='team')
+plot_goalsFor.show()
+# This shows a positive correlation suggesting a better attacking strength based on form equates to a higher win rate
+# This would make a good feature.
+
+# Does more goals conceded in the last 5 games equate to a lower win rate?
+plot_goalsAgainst = pe.scatter(team_summary, x='lost', y='goalsagainst_l5', labels='season', color='team')
+plot_goalsAgainst.show()
+
+# Does a higher number of home team corners equate to a higher win rate for the home team?
+plot_goalsAgainst = pe.scatter(team_summary, x='won', y='hc', labels='season', color='team')
+plot_goalsAgainst.show()
+
+# Does a higher number of away team corners equate to a higher win rate for the away team?
+plot_goalsAgainst = pe.scatter(team_summary, x='won', y='ac', labels='season', color='team')
+plot_goalsAgainst.show()
 
 # Plot goals for each match
-#plot = pe.histogram(teamform, 'goalsfor')
-#plot.show()
+# plot = pe.histogram(teamform, 'goalsfor')
+# plot.show()
 
 # Plot goals against each match
-#plot = pe.histogram(teamform, 'goalsagainst')
-#plot.show()
+# plot = pe.histogram(teamform, 'goalsagainst')
+# plot.show()
 
 #plot = pe.histogram(teamform, 'attacking_strength_l5')
 #plot.show()
@@ -228,17 +250,15 @@ for i in range(len(full_teams)):
     full_teams.loc[i, 'final_result'] = assign_result(full_teams.loc[i, 'result_x'])
 
 
-test = teamform[teamform['team'] == 'Liverpool']
-
 # MODEL BUILDING
 
 # Add feature names here
 features = [
         # Home team features
-       'goalsfor_l5_x', 'goalsagainst_l5_x',
+       'goalsfor_l5_x', 'goalsagainst_l5_x', 'pct_rank_x',
        'attacking_strength_l5_x', 'defensive_strength_l5_x',
         # Away team features
-       'goalsfor_l5_y', 'goalsagainst_l5_y',
+       'goalsfor_l5_y', 'goalsagainst_l5_y', 'pct_rank_y',
        'attacking_strength_l5_y', 'defensive_strength_l5_y'
 ]
 
@@ -287,5 +307,3 @@ preds = model.predict(X_test)
 from sklearn.metrics import accuracy_score
 score = accuracy_score(y_test, preds)
 
-feature_importances = pd.Series(model.feature_importances_)
-feature_importances.index = X_train.columns

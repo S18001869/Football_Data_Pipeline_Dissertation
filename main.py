@@ -37,8 +37,7 @@ def GetResults(link, dropresults):
     # Get the data types for each of the columns
     data_types = dict(df.dtypes)
 
-    # Create a description of the columns, used to create the table. Print this to see how it looks.
-    # This is pretty complicated so dont worry about understanding it, you can also write this by hand as a string
+    # Create a description of the columns, used to create the table
     column_description = ''.join([f"{key} {convert_data_type_names(value)}, " for key, value in data_types.items()])
     # Remove the ", " from the end of the description
     column_description = column_description[:-2]
@@ -94,7 +93,7 @@ def GetResults(link, dropresults):
 
 if __name__ == '__main__':
 
-    dlinks = generate_download_links(2018, 2020)
+    dlinks = generate_download_links(2010, 2020)
     dropcondition = 0 # Set dropcondition to 0
 
     for footballlinks in dlinks:  # For every element in dlinks, call GetResults and pass the link
