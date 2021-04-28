@@ -30,6 +30,24 @@ assert percent_of_home_wins + percent_of_home_draws + percent_of_home_loss == 1,
 # When the team plays at home, the team wins 46% of the time.
 # When the teams at home, it's x % more likely to win.
 
+# Does a half-time lead make it more likely the team will win?
+# Get percent of Full Time wins for Home Teams
+percent_of_home_wins = len(result[result["ftr"] == "H"]) / len(result)  # Show bool of if ftr is H
+print(percent_of_home_wins)
+# Get percent of Half Time Leads for Home Teams
+percent_of_halftime_lead_h = len(result[result["htr"] == "H"]) / len(result)
+percent_of_halftime_lead_d = len(result[result["htr"] == "D"]) / len(result)
+percent_of_halftime_lead_a = len(result[result["htr"] == "A"]) / len(result)
+# I know that the percent of full time wins for the home team is 46%.
+# I found:
+# The percent of half time leads for the Home team is 35%.
+# The percent of half time draws for the Home team is 37%.
+# The percent of half time deficits for the Home team is 27%.
+# This suggests that the Home Team is most likely to see the first half out with a draw.
+# However, if the Home Team is winning at half time, this does not indicate they will win the game at Full Time.
+# It does suggest that the Home Team is more likely to remain level by half-time
+# It also suggests the Home Team is more likely to score in the second-half.
+
 # Is Team Form a good predictor of whether the team will win their next game?
 # Team Form based on the Home Goals in previous 5 games
 result.groupby("hometeam").fthg.rolling(
@@ -58,10 +76,8 @@ assert len(teamform) == len(result) * 2  # Testing new dataframe is the correct 
 
 
 # Make a rolling average window for features
-
 # Team Form for past 5 games (excluding most recent game)
 # Lag goals for, so we don't generate features from the game we are trying to predict
-
 
 def add_rolling_average(df, column='goalsfor', window=5, min_periods=5):
     # Shift so we dont use the current game score as part of the average
@@ -77,32 +93,12 @@ def add_rolling_average(df, column='goalsfor', window=5, min_periods=5):
 teamform = add_rolling_average(teamform, column='goalsfor', window=5, min_periods=5)
 teamform = add_rolling_average(teamform, column='goalsagainst', window=5, min_periods=5)
 
-# Insights and questions:
-# The relationship between goals scored and if the team wins next game
-
-# Does a half-time lead make it more likely the team will win?
-# Get percent of Full Time wins for Home Teams
-percent_of_home_wins = len(result[result["ftr"] == "H"]) / len(result)  # Show bool of if ftr is H
-# Get percent of Half Time Leads for Home Teams
-percent_of_halftime_lead_h = len(result[result["htr"] == "H"]) / len(result)
-percent_of_halftime_lead_d = len(result[result["htr"] == "D"]) / len(result)
-percent_of_halftime_lead_a = len(result[result["htr"] == "A"]) / len(result)
-# I know that the percent of full time wins for the home team is 46%.
-# I found:
-# The percent of half time leads for the Home team is 35%.
-# The percent of half time draws for the Home team is 37%.
-# The percent of half time deficits for the Home team is 27%.
-# This suggests that the Home Team is most likely to see the first half out with a draw.
-# However, if the Home Team is winning at half time, this does not indicate they will win the game at Full Time.
-# It does suggest that the Home Team is more likely to remain level by half-time
-# It also suggests the Home Team is more likely to score in the second-half.
 
 # Calculate the Attacking and Defending strength of each team
 # Get average goals from last 5 games to determine attacking strength
 # Use Pandas Rank to decide the rank and remove human bias
 # Compute numerical data ranks (1 through n) along axis
 # Create a Ranking function that I can reuse on different columns
-
 
 def ranking_function(teamform, col_name, new_col_name, ascending=True):
 
@@ -194,29 +190,31 @@ teamform['won'] = teamform['result'] == 'W'  # Adds "won" col to teamform df sta
 teamform['lost'] = teamform['result'] == 'L'  # Adds "lost" col to teamform stating if team lost
 teamform.groupby(['team']).won.mean().reset_index()  # The win rate of all teams
 teamform.groupby(['team']).lost.mean().reset_index()  # The loss rate of all teams
-del teamform['home_corners']
 # Team Summary : Add columns
 team_summary = teamform.groupby(['team', 'season'])['won', 'lost', 'hc', 'ac', 'goalsfor_l5', 'goalsagainst_l5'].mean().reset_index()
 team_summary.corr() # This gives me a correlation matrix. Easy way to visualise data.
 
 
 # Does more goals in the last 5 games equate to a higher win rate?
-plot_goalsFor = pe.scatter(team_summary, x='won', y='goalsfor_l5', labels='season', color='team')
-plot_goalsFor.show()
+plot_goalsFor = pe.scatter(team_summary, x='won', y='goalsfor_l5', labels='season', color='team', title='Goals for Home team and win rate')
+plotly.offline.plot(plot_goalsFor)
+# plot_goalsFor.show()
 # This shows a positive correlation suggesting a better attacking strength based on form equates to a higher win rate
 # This would make a good feature.
 
 # Does more goals conceded in the last 5 games equate to a lower win rate?
-plot_goalsAgainst = pe.scatter(team_summary, x='lost', y='goalsagainst_l5', labels='season', color='team')
-plot_goalsAgainst.show()
+plot_goalsAgainst = pe.scatter(team_summary, x='lost', y='goalsagainst_l5', labels='season', color='team', title='Goals against Home Team and loss rate')
+plotly.offline.plot(plot_goalsAgainst)
+# plot_goalsAgainst.show()
 
 # Does a higher number of home team corners equate to a higher win rate for the home team?
-plot_goalsAgainst = pe.scatter(team_summary, x='won', y='hc', labels='season', color='team')
-plot_goalsAgainst.show()
+plot_CornersFor = pe.scatter(team_summary, x='won', y='hc', labels='season', color='team', title='Corners for Home team and win rate')
+plotly.offline.plot(plot_CornersFor)
+# plot_goalsAgainst.show()
 
 # Does a higher number of away team corners equate to a higher win rate for the away team?
-plot_goalsAgainst = pe.scatter(team_summary, x='won', y='ac', labels='season', color='team')
-plot_goalsAgainst.show()
+plot_CornersAgainst = pe.scatter(team_summary, x='loss', y='ac', labels='season', color='team', title='Corners against Home team and loss rate')
+plotly.offline.plot(plot_CornersAgainst)
 
 # Plot goals for each match
 # plot = pe.histogram(teamform, 'goalsfor')
