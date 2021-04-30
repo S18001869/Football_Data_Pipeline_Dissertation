@@ -191,7 +191,7 @@ teamform['lost'] = teamform['result'] == 'L'  # Adds "lost" col to teamform stat
 teamform.groupby(['team']).won.mean().reset_index()  # The win rate of all teams
 teamform.groupby(['team']).lost.mean().reset_index()  # The loss rate of all teams
 # Team Summary : Add columns
-team_summary = teamform.groupby(['team', 'season'])['won', 'lost', 'hc', 'ac', 'goalsfor_l5', 'goalsagainst_l5'].mean().reset_index()
+team_summary = teamform.groupby(['team', 'season'])['won', 'lost', 'goalsfor', 'goalsagainst', 'hc', 'ac', 'goalsfor_l5', 'goalsagainst_l5'].mean().reset_index()
 team_summary.corr() # This gives me a correlation matrix. Easy way to visualise data.
 
 
@@ -201,16 +201,24 @@ plotly.offline.plot(plot_goalsFor)
 # plot_goalsFor.show()
 # This shows a positive correlation suggesting a better attacking strength based on form equates to a higher win rate
 # This would make a good feature.
+# Bar chart for average goals scored and average win rate
+bar_goalsFor = pe.bar(team_summary, x='won', y='goalsfor_l5', labels='season', color='team', title='Goals for Home team and win rate')
+plotly.offline.plot(bar_goalsFor)
 
 # Does more goals conceded in the last 5 games equate to a lower win rate?
-plot_goalsAgainst = pe.scatter(team_summary, x='lost', y='goalsagainst_l5', labels='season', color='team', title='Goals against Home Team and loss rate')
+plot_goalsAgainst = pe.scatter(team_summary, x='lost', y='goalsagainst', labels='season', color='team', title='Goals against Home Team and loss rate')
 plotly.offline.plot(plot_goalsAgainst)
-# plot_goalsAgainst.show()
+# Bar Chart for average goals conceded and average loss rate
+bar_goalsAgainst = pe.bar(team_summary, x='lost', y='goalsagainst', labels='season', color='team', title='Goals against Home Team and loss rate')
+plotly.offline.plot(bar_goalsAgainst)
+
 
 # Does a higher number of home team corners equate to a higher win rate for the home team?
 plot_CornersFor = pe.scatter(team_summary, x='won', y='hc', labels='season', color='team', title='Corners for Home team and win rate')
 plotly.offline.plot(plot_CornersFor)
-# plot_goalsAgainst.show()
+# Bar Chart does more corners correlate to an increased win rate?
+bar_CornersFor = pe.bar(team_summary, x='won', y='hc', labels='season', color='team', title='Corners for Home team and win rate')
+plotly.offline.plot(bar_CornersFor)
 
 # Does a higher number of away team corners equate to a higher win rate for the away team?
 plot_CornersAgainst = pe.scatter(team_summary, x='loss', y='ac', labels='season', color='team', title='Corners against Home team and loss rate')
