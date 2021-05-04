@@ -55,15 +55,17 @@ result.groupby("hometeam").fthg.rolling(
 # This is okay, but I want overall form
 # I need one row per team per game to find the Home Form value
 result["id"] = result.index
-homecols = ["id", "date", "hometeam", "fthg", "ftag", "hc", "season"]
-homecolsnew = ["id", "date", "team", "goalsfor", "goalsagainst", "hc", "season"]
+homecols = ["id", "date", "hometeam", "fthg", "ftag", "hc", "ac", "hf", "af", "hy", "ay", "hr", "ar", "season"]
+homecolsnew = ["id", "date", "team", "goalsfor", "goalsagainst", "cornersfor", "cornersagainst", "foulsfor",
+               "foulsagainst", "yellowfor", "yellowagainst", "redfor", "redagainst", "season"]
 df_home = result[homecols]
 df_home.columns=homecolsnew
 df_home.loc[:, "ishome"] = True
 
 # Team Form based on the Away Goals in previous 5 games
-awaycols = ["id", "date", "awayteam", "ftag", "fthg", "ac", "season"]
-awaycolsnew = ["id", "date", "team", "goalsfor", "goalsagainst", "ac", "season"]
+awaycols = ["id", "date", "awayteam", "ftag", "fthg", "ac", "hc", "af", "hf", "ay", "hy", "hr", "ar", "season"]
+awaycolsnew = ["id", "date", "team", "goalsfor", "goalsagainst", "cornersfor", "cornersagainst", "foulsfor",
+               "foulsagainst", "yellowfor", "yellowagainst", "redagainst", "redfor", "season"]
 df_away = result[awaycols]
 df_away.columns=awaycolsnew
 df_away.loc[:, "ishome"] = False
@@ -79,6 +81,30 @@ assert len(teamform) == len(result) * 2  # Testing new dataframe is the correct 
 # Team Form for past 5 games (excluding most recent game)
 # Lag goals for, so we don't generate features from the game we are trying to predict
 
+
+
+def get_result(x):
+    if x['goalsfor'] > x['goalsagainst']:
+        return "W"
+    elif x['goalsfor'] < x['goalsagainst']:
+        return "L"
+    else:
+        return "D"
+
+
+# Applies the 'get_result' function to every row in teamform, adds results to a new col called "result"
+
+
+teamform['result'] = teamform.apply(get_result, axis=1)
+
+
+# Team Form : Add columns
+teamform['won'] = teamform['result'] == 'W'  # Adds "won" col to teamform df stating if team won
+teamform['lost'] = teamform['result'] == 'L'  # Adds "lost" col to teamform stating if team lost
+teamform['won'] = teamform.groupby(['team', 'won']).won.mean()  # The win rate of all teams
+teamform['lost'] = teamform.groupby(['team' 'lost']).lost.mean  # The loss rate of all teams
+
+
 def add_rolling_average(df, column='goalsfor', window=5, min_periods=5):
     # Shift so we dont use the current game score as part of the average
     df[f'{column}_lagged'] = df.groupby('team')[column].shift(1)
@@ -92,6 +118,16 @@ def add_rolling_average(df, column='goalsfor', window=5, min_periods=5):
 
 teamform = add_rolling_average(teamform, column='goalsfor', window=5, min_periods=5)
 teamform = add_rolling_average(teamform, column='goalsagainst', window=5, min_periods=5)
+teamform = add_rolling_average(teamform, column='cornersfor', window=5, min_periods=5)
+teamform = add_rolling_average(teamform, column='cornersagainst', window=5, min_periods=5)
+teamform = add_rolling_average(teamform, column='foulsfor', window=5, min_periods=5)
+teamform = add_rolling_average(teamform, column='foulsagainst', window=5, min_periods=5)
+teamform = add_rolling_average(teamform, column='yellowfor', window=5, min_periods=5)
+teamform = add_rolling_average(teamform, column='yellowagainst', window=5, min_periods=5)
+teamform = add_rolling_average(teamform, column='redfor', window=5, min_periods=5)
+teamform = add_rolling_average(teamform, column='redagainst', window=5, min_periods=5)
+teamform = add_rolling_average(teamform, column='won', window=5, min_periods=5)
+teamform = add_rolling_average(teamform, column='lost', window=5, min_periods=5)
 
 
 # Calculate the Attacking and Defending strength of each team
@@ -153,22 +189,7 @@ teamform.head()
 # First define the get_result function
 
 
-def get_result(x):
-    if x['goalsfor'] > x['goalsagainst']:
-        return "W"
-    elif x['goalsfor'] < x['goalsagainst']:
-        return "L"
-    else:
-        return "D"
-
-# Applies the 'get_result' function to every row in teamform, adds results to a new col called "result"
-
-teamform['result'] = teamform.apply(get_result, axis=1)
-
 # teamform['result'] = teamform.apply(lambda x: get_result(x), axis=1)
-
-
-# Get average goals conceded in the last 5 games
 
 
 
@@ -185,44 +206,99 @@ plotly.offline.plot(home_goals)
 away_goals = pe.histogram(away_teams, x='goalsfor', title='Goals scored by away team (histogram)')
 plotly.offline.plot(away_goals)
 
-# Team Form : Add columns
-teamform['won'] = teamform['result'] == 'W'  # Adds "won" col to teamform df stating if team won
-teamform['lost'] = teamform['result'] == 'L'  # Adds "lost" col to teamform stating if team lost
-teamform.groupby(['team']).won.mean().reset_index()  # The win rate of all teams
-teamform.groupby(['team']).lost.mean().reset_index()  # The loss rate of all teams
 # Team Summary : Add columns
-team_summary = teamform.groupby(['team', 'season'])['won', 'lost', 'goalsfor', 'goalsagainst', 'hc', 'ac', 'goalsfor_l5', 'goalsagainst_l5'].mean().reset_index()
-team_summary.corr() # This gives me a correlation matrix. Easy way to visualise data.
+# team_summary = teamform.groupby(['team', 'season'])['won', 'lost', 'goalsfor', 'goalsagainst',
+#                                                    'goalsfor_l5', 'goalsagainst_l5', 'cornersfor_l5',
+#                                                    'cornersagainst_l5', 'foulsfor_l5', 'foulsagainst_l5',
+#                                                    'yellowfor_l5', 'yellowagainst_l5', 'redfor_l5', 'redagainst_l5'].mean().reset_index()
+# team_summary.corr() # This gives me a correlation matrix. Easy way to visualise data.
 
 
-# Does more goals in the last 5 games equate to a higher win rate?
-plot_goalsFor = pe.scatter(team_summary, x='won', y='goalsfor_l5', labels='season', color='team', title='Goals for Home team and win rate')
+# Scatter plot: Goals for vs win rate
+plot_goalsFor = pe.scatter(teamform, x='won_l5', y='goalsfor_l5', labels='season', color='team', title='Goals for vs win rate')
 plotly.offline.plot(plot_goalsFor)
 # plot_goalsFor.show()
 # This shows a positive correlation suggesting a better attacking strength based on form equates to a higher win rate
 # This would make a good feature.
-# Bar chart for average goals scored and average win rate
-bar_goalsFor = pe.bar(team_summary, x='won', y='goalsfor_l5', labels='season', color='team', title='Goals for Home team and win rate')
-plotly.offline.plot(bar_goalsFor)
+# Bar chart: Goals for vs win rate
+# bar_goalsFor = pe.bar(teamform, x='won_l5', y='goalsfor_l5', labels='season', color='team', title='Goals for vs win rate')
+# plotly.offline.plot(bar_goalsFor)
 
-# Does more goals conceded in the last 5 games equate to a lower win rate?
-plot_goalsAgainst = pe.scatter(team_summary, x='lost', y='goalsagainst', labels='season', color='team', title='Goals against Home Team and loss rate')
+# Scatter plot: Goals against vs win rate
+plot_goalsAgainst = pe.scatter(teamform, x='won_l5', y='goalsagainst_l5', labels='season', color='team', title='Goals Against vs win rate')
 plotly.offline.plot(plot_goalsAgainst)
-# Bar Chart for average goals conceded and average loss rate
-bar_goalsAgainst = pe.bar(team_summary, x='lost', y='goalsagainst', labels='season', color='team', title='Goals against Home Team and loss rate')
-plotly.offline.plot(bar_goalsAgainst)
+# Bar Chart: Goals Against vs win rate
+# bar_goalsAgainst = pe.bar(teamform, x='won_l5', y='goalsagainst_l5', labels='season', color='team', title='Goals Against vs win rate')
+# plotly.offline.plot(bar_goalsAgainst)
 
 
-# Does a higher number of home team corners equate to a higher win rate for the home team?
-plot_CornersFor = pe.scatter(team_summary, x='won', y='hc', labels='season', color='team', title='Corners for Home team and win rate')
+# Scatter plot: Corners for vs win rate
+plot_CornersFor = pe.scatter(teamform, x='won_l5', y='cornersfor_l5', labels='season', color='team', title='Corners for vs win rate')
 plotly.offline.plot(plot_CornersFor)
-# Bar Chart does more corners correlate to an increased win rate?
-bar_CornersFor = pe.bar(team_summary, x='won', y='hc', labels='season', color='team', title='Corners for Home team and win rate')
-plotly.offline.plot(bar_CornersFor)
+# Bar Chart: Corners for vs win rate
+# bar_CornersFor = pe.bar(teamform, x='won_l5', y='cornersfor_l5', labels='season', color='team', title='Corners for vs win rate')
+# plotly.offline.plot(bar_CornersFor)
 
-# Does a higher number of away team corners equate to a higher win rate for the away team?
-plot_CornersAgainst = pe.scatter(team_summary, x='loss', y='ac', labels='season', color='team', title='Corners against Home team and loss rate')
+
+# Scatter plot: Corners against vs win rate
+plot_CornersAgainst = pe.scatter(teamform, x='won_l5', y='cornersagainst_l5', labels='season', color='team', title='Corners against vs win rate')
 plotly.offline.plot(plot_CornersAgainst)
+# Bar Chart: Corners against vs win rate
+# bar_CornersAgainst = pe.bar(teamform, x='won_l5', y='cornersagainst_l5', labels='season', color='team', title='Corners against vs win rate')
+# plotly.offline.plot(bar_CornersAgainst)
+
+
+# Scatter plot: Fouls committed vs win rate
+plot_FoulsFor = pe.scatter(teamform, x='won_l5', y='foulsfor_l5', labels='season', color='team', title='Fouls for vs win rate')
+plotly.offline.plot(plot_FoulsFor)
+# Bar Chart: Fouls committed vs win rate
+# bar_FoulsFor = pe.bar(teamform, x='won_l5', y='foulsfor_l5', labels='season', color='team', title='Fouls for vs win rate')
+# plotly.offline.plot(bar_FoulsFor)
+
+
+# Scatter plot: Fouls against vs win rate
+plot_FoulsAgainst = pe.scatter(teamform, x='won_l5', y='foulsagainst_l5', labels='season', color='team', title='Fouls against vs win rate')
+plotly.offline.plot(plot_FoulsAgainst)
+# Bar Chart: Fouls against vs win rate
+# bar_FoulsAgainst = pe.bar(teamform, x='won_l5', y='foulsagainst_l5', labels='season', color='team', title='Fouls against vs win rate')
+# plotly.offline.plot(bar_FoulsAgainst)
+
+# Scatter plot: Yellow cards for vs win rate
+plot_YellowFor = pe.scatter(teamform, x='won_l5', y='yellowfor_l5', labels='season', color='team', title='Yellow card for vs win rate')
+plotly.offline.plot(plot_YellowFor)
+# Bar Chart: Yellow cards for vs win rate
+# bar_YellowFor = pe.bar(teamform, x='won_l5', y='yellowfor_l5', labels='season', color='team', title='Yellow card for vs win rate')
+# plotly.offline.plot(bar_YellowFor)
+
+# Scatter plot: Yellow cards against vs win rate
+plot_YellowAgainst = pe.scatter(teamform, x='won_l5', y='yellowagainst_l5', labels='season', color='team', title='Yellow card against vs win rate')
+plotly.offline.plot(plot_YellowAgainst)
+# Bar Chart: Yellow cards against vs win rate
+# bar_YellowAgainst = pe.bar(teamform, x='won_l5', y='yellowagainst_l5', labels='season', color='team', title='Yellow card against vs win rate')
+# plotly.offline.plot(bar_YellowAgainst)
+
+
+# Scatter plot: Red card for vs win rate
+plot_RedFor = pe.scatter(teamform, x='won_l5', y='redfor_l5', labels='season', color='team', title='Red card for vs win rate')
+plotly.offline.plot(plot_RedFor)
+# Bar Chart: Red card for vs win rate
+# bar_RedFor = pe.bar(teamform, x='won_l5', y='redfor_l5', labels='season', color='team', title='Red card for vs win rate')
+# plotly.offline.plot(bar_RedFor)
+
+
+# Scatter plot: Red card against vs win rate
+plot_RedAgainst = pe.scatter(teamform, x='won_l5', y='redagainst_l5', labels='season', color='team', title='Red card against vs win rate')
+plotly.offline.plot(plot_RedAgainst)
+# Bar Chart: Red card against vs win rate
+# bar_RedAgainst = pe.bar(teamform, x='won_l5', y='redagainst_l5', labels='season', color='team', title='Red card against vs win rate')
+# plotly.offline.plot(bar_RedAgainst)
+
+
+# Bar Chart showing how each feature correlates to each other
+cor = teamform.corr()['won']
+fig = pe.bar(cor)
+plotly.offline.plot(fig)
+
 
 # Plot goals for each match
 # plot = pe.histogram(teamform, 'goalsfor')
@@ -268,7 +344,7 @@ features = [
        'attacking_strength_l5_y', 'defensive_strength_l5_y'
 ]
 
-# Make sure categorical columns are one-hot encoded (this means trhey only contain 1 or 0). This is because
+# Make sure categorical columns are one-hot encoded (this means they only contain 1 or 0). This is because
 # models cant deal with string categories
 categorical_cols = ['attacking_strength_l5_x', 'defensive_strength_l5_x',
                     'attacking_strength_l5_y', 'defensive_strength_l5_y']
