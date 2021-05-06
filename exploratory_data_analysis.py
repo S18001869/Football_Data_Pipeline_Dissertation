@@ -218,18 +218,13 @@ plotly.offline.plot(away_goals)
 plot_goalsFor = pe.scatter(teamform, x='won_l5', y='goalsfor_l5', labels='season', color='team', title='Goals for vs win rate')
 plotly.offline.plot(plot_goalsFor)
 # plot_goalsFor.show()
-# This shows a positive correlation suggesting a better attacking strength based on form equates to a higher win rate
+# This shows a positive correlation suggesting a better attacking strength based on form may equate to a higher win rate
 # This would make a good feature.
-# Bar chart: Goals for vs win rate
-# bar_goalsFor = pe.bar(teamform, x='won_l5', y='goalsfor_l5', labels='season', color='team', title='Goals for vs win rate')
-# plotly.offline.plot(bar_goalsFor)
 
 # Scatter plot: Goals against vs win rate
 plot_goalsAgainst = pe.scatter(teamform, x='won_l5', y='goalsagainst_l5', labels='season', color='team', title='Goals Against vs win rate')
 plotly.offline.plot(plot_goalsAgainst)
 # Bar Chart: Goals Against vs win rate
-# bar_goalsAgainst = pe.bar(teamform, x='won_l5', y='goalsagainst_l5', labels='season', color='team', title='Goals Against vs win rate')
-# plotly.offline.plot(bar_goalsAgainst)
 
 
 # Scatter plot: Corners for vs win rate
