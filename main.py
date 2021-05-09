@@ -88,7 +88,7 @@ def GetResults(link, dropresults):
         # Add the values to the database
         query = f"INSERT INTO {table_name} ({column_names}) VALUES ({string_row})"
         query = clean_query(query)
-        run_query(query=query, return_data=False, path_to_db=db_dir)
+        run_query(query=query, return_data=False, path_to_db=db_dir, params={})
 
 
 if __name__ == '__main__':
@@ -102,7 +102,7 @@ if __name__ == '__main__':
         else:
             dropresults = False
         dropcondition = dropcondition + 1  # Add 1 to drop condition each time
-
+        print(f"Running data for {footballlinks}")
         GetResults(footballlinks, dropresults)
 
     # Check that the values have been added

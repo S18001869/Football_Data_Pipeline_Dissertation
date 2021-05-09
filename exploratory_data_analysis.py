@@ -19,12 +19,20 @@ table_name = 'results'
 
 result = run_query(query=f'select * from {table_name}', return_data=True, path_to_db=db_dir)
 
+cols = ['fthg', 'ftag', 'hthg',
+       'htag',  'home_shots', 'away_shots', 'hst', 'ast',
+       'hf', 'af', 'hc', 'ac', 'hy', 'ay', 'hr', 'ar']
+result.loc[result['season'] == '1415', cols] = result.loc[result['season'] == '1415', cols]/10
+
+result.groupby('season').mean()
+
+
 # Does Home Advantage play a part in winning the game?
 # Percent of times the home team wins compared to draw and away win
 percent_of_home_wins = len(result[result["ftr"] == "H"]) / len(result)  # Show bool of if ftr is H
 percent_of_home_draws = len(result[result["ftr"] == "D"]) / len(result)  # Show bool of if ftr is D
 percent_of_home_loss = len(result[result["ftr"] == "A"]) / len(result)  # Show bool of if ftr is A
-assert percent_of_home_wins + percent_of_home_draws + percent_of_home_loss == 1, ""
+assert np.round(percent_of_home_wins + percent_of_home_draws + percent_of_home_loss) == 1, ""
 # Check percentage includes 100% games
 # Insights:
 # When the team plays at home, the team wins 46% of the time.
@@ -97,13 +105,19 @@ def get_result(x):
 
 teamform['result'] = teamform.apply(get_result, axis=1)
 
-
 # Team Form : Add columns
 teamform['won'] = teamform['result'] == 'W'  # Adds "won" col to teamform df stating if team won
 teamform['lost'] = teamform['result'] == 'L'  # Adds "lost" col to teamform stating if team lost
-teamform['won'] = teamform.groupby(['team', 'won']).won.mean()  # The win rate of all teams
-teamform['lost'] = teamform.groupby(['team' 'lost']).lost.mean  # The loss rate of all teams
 
+win_rates = teamform.groupby(['team', 'season']).won.mean().reset_index()  # The win rate of all teams
+win_rates.columns = ['team', 'season', 'win_rate']
+teamform = pd.merge(teamform, win_rates, on=['team', 'season'])
+teamform['won'] = teamform['win_rate']
+
+loss_rates = teamform.groupby(['team', 'season']).lost.mean().reset_index()  # The win rate of all teams
+loss_rates.columns = ['team', 'season', 'loss_rate']
+teamform = pd.merge(teamform, loss_rates, on=['team', 'season'])
+teamform['lost'] = teamform['loss_rate']
 
 def add_rolling_average(df, column='goalsfor', window=5, min_periods=5):
     # Shift so we dont use the current game score as part of the average
@@ -138,7 +152,7 @@ teamform = add_rolling_average(teamform, column='lost', window=5, min_periods=5)
 
 def ranking_function(teamform, col_name, new_col_name, ascending=True):
 
-    teamform['pct_rank'] = teamform[col_name].rank(ascending=ascending, pct=True)
+    teamform['pct_rank'] = teamform[col_name].shift(1).rank(ascending=ascending, pct=True)
 
     # Now I need to create the column "attacking_strength_l5" in team form
     # Create a list of conditions
@@ -329,14 +343,6 @@ for i in range(len(full_teams)):
 
 # MODEL BUILDING
 
-# Add feature names here
-features = [
-        # Home team features
-       'goalsfor_l5_x', 'cornersfor_l5_x', 'foulsagainst_l5_x',
-        # Away team features
-       'goalsagainst_l5_y', 'cornersagainst_l5_y', 'foulsfor_l5_y'
-]
-
 # Make sure categorical columns are one-hot encoded (this means they only contain 1 or 0). This is because
 # models cant deal with string categories
 categorical_cols = ['attacking_strength_l5_x', 'defensive_strength_l5_x',
@@ -346,20 +352,20 @@ categorical_dummies = pd.get_dummies(full_teams[categorical_cols])
 full_teams = pd.concat([full_teams.reset_index(drop=True), categorical_dummies.reset_index(drop=True)], axis=1)
 # Drop the original columns
 full_teams = full_teams.drop(categorical_cols, axis=1)
-# Redefine features wit hthe new columns
+# Redefine features with the new columns
 features = [
-        # Home team features
-       'goalsfor_l5_x', 'goalsagainst_l5_x',
-        # Away team features
-       'goalsagainst_l5_y', 'goalsfor_l5_y',
+   # Home team features
+   'goalsfor_l5_x', 'cornersfor_l5_x', 'foulsagainst_l5_x',
+   # Away team features
+   'goalsagainst_l5_y', 'cornersagainst_l5_y', 'foulsfor_l5_y'
 ] + list(categorical_dummies.columns)
 
-# Remove null values as  the modcel cant handle them
+# Remove null values as  the model cant handle them
 full_teams = full_teams.dropna()
 
 # Drop null values as the model cant deal with NULLs
-y = full_teams['final_result']
 X = full_teams[features]
+y = full_teams['final_result']
 
 # Scale the data (also known as Standardization). This makes the data have a mean of 0 and a
 # standard deviation of 1. This is required by some models, like linear models and neural networks
@@ -371,14 +377,53 @@ X_train, X_test, y_train, y_test = train_test_split(full_teams[features], full_t
 
 # Create a random forest classifier
 from sklearn.ensemble import RandomForestClassifier
-model = RandomForestClassifier()
-
-model.fit(X_train, y_train)
-
-# Generate new predictions
-preds = model.predict(X_test)
-
-# Evaluate model in terms of roc_auc
+from sklearn.svm import SVC
+from xgboost import XGBClassifier
 from sklearn.metrics import accuracy_score
-score = accuracy_score(y_test, preds)
 
+# Models to test
+# Linear model
+# Random forest
+# XGBoost
+
+# Evaluation metric - Accuracy, because the classes (H/D/A) are fairly balanced
+
+# Compare the models against eachother, but also against a baseline. The baseline is the
+# accuracy you could get without a model. The best baseline for this would be the accuracy you would
+# get if you selected the home team every time.
+
+# Optional: You could also create another baseline which is betting on the favourite.
+
+# Train each model, evaluate it on a test set, using balanced_accuracy_score
+
+def train_evaluate_model(model, X_train, X_test, y_train, y_test):
+    # Fit a model to the data
+    model.fit(X_train, y_train)
+    # Generate new predictions
+    preds = model.predict(X_test)
+    # Evaluate model in terms of accuracy
+    performance = accuracy_score(y_test, preds)
+    return {"model": model, "performance": performance}
+
+
+# Create candidate models to test
+svc_classifier = SVC()
+rf_classifier = RandomForestClassifier()
+xgb_classifier = XGBClassifier()
+
+model_performance = {}
+
+for model in [('support_vector_machine', svc_classifier), ('random_forest', rf_classifier), ('xgboost', xgb_classifier)]:
+    print(f"training {model}")
+    model_performance[model[0]] = train_evaluate_model(model[1], X_train, X_test, y_train, y_test)
+    print(f"Model performance: {model_performance[model[0]]['performance']}")
+
+# TODO: Compare the performance of each model and see which is the best
+
+# Create a baseline
+baseline_performance = accuracy_score(y_test, ['H']*len(y_test))  # Performance if we picked home every time
+
+# One good comparison is model_performance_against_baseline
+performance_vs_baseline = model_performance['support_vector_machine']['performance']/baseline_performance-1
+# This tells you how much better the model is than the baseline as a %
+print(f"The SVM model beats the baseline by {round(performance_vs_baseline, 4)}%")

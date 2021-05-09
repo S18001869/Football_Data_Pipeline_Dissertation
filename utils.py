@@ -58,6 +58,7 @@ def clean_query(query):
     """
     query = query.replace('<', 'u')
     query = query.replace('>', 'o')
+    query = query.replace('nan', 'NULL')
     # Define all the symbols we want to be allowed in the text
     regex = re.compile("[^a-zA-Z0123456789 ,()_']")
     # Replace any characters that arent defined above, with nothing

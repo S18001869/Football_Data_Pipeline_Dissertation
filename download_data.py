@@ -43,6 +43,6 @@ if __name__ == '__main__':
     # __name__ refers to the script that's being run
     test_generate_download_links()
     test_generate_download_links_one_digit_year()
-    links = generate_download_links(2001, 2003)
+    links = generate_download_links(2001, 2020)
     # for link in links:
     # get_football_data(link)
