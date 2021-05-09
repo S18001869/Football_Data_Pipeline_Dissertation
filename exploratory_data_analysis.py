@@ -332,11 +332,9 @@ for i in range(len(full_teams)):
 # Add feature names here
 features = [
         # Home team features
-       'goalsfor_l5_x', 'goalsagainst_l5_x', 'pct_rank_x',
-       'attacking_strength_l5_x', 'defensive_strength_l5_x',
+       'goalsfor_l5_x', 'cornersfor_l5_x', 'foulsagainst_l5_x',
         # Away team features
-       'goalsfor_l5_y', 'goalsagainst_l5_y', 'pct_rank_y',
-       'attacking_strength_l5_y', 'defensive_strength_l5_y'
+       'goalsagainst_l5_y', 'cornersagainst_l5_y', 'foulsfor_l5_y'
 ]
 
 # Make sure categorical columns are one-hot encoded (this means they only contain 1 or 0). This is because
@@ -353,7 +351,7 @@ features = [
         # Home team features
        'goalsfor_l5_x', 'goalsagainst_l5_x',
         # Away team features
-       'goalsfor_l5_y', 'goalsagainst_l5_y',
+       'goalsagainst_l5_y', 'goalsfor_l5_y',
 ] + list(categorical_dummies.columns)
 
 # Remove null values as  the modcel cant handle them
