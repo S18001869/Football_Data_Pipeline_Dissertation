@@ -1,10 +1,3 @@
-# Some techniques used:
-# List Comprehension
-# Format Strings
-# join()
-# Looping using range()
-# df.iloc[] and df.loc[]
-
 import pandas as pd
 
 # We put all functions inside their own script to make this script cleaner

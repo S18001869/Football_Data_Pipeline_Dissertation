@@ -7,7 +7,7 @@ from sklearn.metrics import roc_auc_score
 import sklearn
 
 
-# We put all functions inside their own script to make this script cleaner
+# all functions are inside their own script to make this script cleaner
 from utils import connect_to_db, run_query, convert_data_type_names, clean_query
 
 from download_data import generate_download_links
@@ -34,11 +34,7 @@ percent_of_home_draws = len(result[result["ftr"] == "D"]) / len(result)  # Show 
 percent_of_home_loss = len(result[result["ftr"] == "A"]) / len(result)  # Show bool of if ftr is A
 assert np.round(percent_of_home_wins + percent_of_home_draws + percent_of_home_loss) == 1, ""
 # Check percentage includes 100% games
-# Insights:
-# When the team plays at home, the team wins 46% of the time.
-# When the teams at home, it's x % more likely to win.
 
-# Does a half-time lead make it more likely the team will win?
 # Get percent of Full Time wins for Home Teams
 percent_of_home_wins = len(result[result["ftr"] == "H"]) / len(result)  # Show bool of if ftr is H
 print(percent_of_home_wins)
@@ -46,15 +42,6 @@ print(percent_of_home_wins)
 percent_of_halftime_lead_h = len(result[result["htr"] == "H"]) / len(result)
 percent_of_halftime_lead_d = len(result[result["htr"] == "D"]) / len(result)
 percent_of_halftime_lead_a = len(result[result["htr"] == "A"]) / len(result)
-# I know that the percent of full time wins for the home team is 46%.
-# I found:
-# The percent of half time leads for the Home team is 35%.
-# The percent of half time draws for the Home team is 37%.
-# The percent of half time deficits for the Home team is 27%.
-# This suggests that the Home Team is most likely to see the first half out with a draw.
-# However, if the Home Team is winning at half time, this does not indicate they will win the game at Full Time.
-# It does suggest that the Home Team is more likely to remain level by half-time
-# It also suggests the Home Team is more likely to score in the second-half.
 
 # Is Team Form a good predictor of whether the team will win their next game?
 # Team Form based on the Home Goals in previous 5 games
@@ -120,7 +107,7 @@ teamform = pd.merge(teamform, loss_rates, on=['team', 'season'])
 teamform['lost'] = teamform['loss_rate']
 
 def add_rolling_average(df, column='goalsfor', window=5, min_periods=5):
-    # Shift so we dont use the current game score as part of the average
+    # Shift so I dont use the current game score as part of the average
     df[f'{column}_lagged'] = df.groupby('team')[column].shift(1)
     test = df.groupby("team")[f"{column}_lagged"].rolling(window, min_periods).mean().reset_index()
     test.columns = ['team', 'index', f"{column}_l{window}"]
@@ -173,13 +160,7 @@ def ranking_function(teamform, col_name, new_col_name, ascending=True):
 teamform = ranking_function(teamform, "goalsfor", "attacking_strength_l5" )
 teamform = ranking_function(teamform, "goalsagainst", "defensive_strength_l5", ascending=False)
 
-# Use this to filter results in the teamform dataframe
-# liverpool = teamform[teamform['team'] == 'Liverpool']
-# HomeTeamsOnly = teamform[teamform['isHome'==True]
 
-# teamform['default_rank'] = teamform['goals_for_l5'].rank()
-# teamform['max_rank'] = teamform['goals_for_l5'].rank(method='max')
-# teamform['NA_bottom'] = teamform['goals_for_l5'].rank(na_option='bottom')
 teamform['pct_rank'] = teamform['goalsfor_l5'].rank(pct=True)
 
 # Now I need to create the column "attacking_strength_l5" in team form
@@ -266,8 +247,7 @@ plotly.offline.plot(plot_FoulsFor)
 
 
 # Scatter plot: Fouls against vs win rate
-plot_FoulsAgainst = pe.scatter(teamform, x='won_l5', y='foulsagainst_l5', labels='season', color='team', title='Fouls against vs win rate')
-plotly.offline.plot(plot_FoulsAgainst)
+
 # Bar Chart: Fouls against vs win rate
 # bar_FoulsAgainst = pe.bar(teamform, x='won_l5', y='foulsagainst_l5', labels='season', color='team', title='Fouls against vs win rate')
 # plotly.offline.plot(bar_FoulsAgainst)
@@ -309,25 +289,10 @@ fig = pe.bar(cor)
 plotly.offline.plot(fig)
 
 
-# Plot goals for each match
-# plot = pe.histogram(teamform, 'goalsfor')
-# plot.show()
-
-# Plot goals against each match
-# plot = pe.histogram(teamform, 'goalsagainst')
-# plot.show()
-
-#plot = pe.histogram(teamform, 'attacking_strength_l5')
-#plot.show()
-
-# this histogram has a poisson distribution, some models assume that features follow a normal distribution
-# this might mean we can't use certain models without transforming the feature
-
-
-# JOIN HOME TEAM AND AWAY TEAM FEATURES ONTO ONE ROW, RATHER THAN HAVING THEM AS SEPERATE RECORDS
-# WE DO THIS AS OTHERWISE WE ARE MAKING A PREDICTION WITH HALF OF THE DATA
+# Join home and away features onto a single row - this is so we don't use only half of the data for predictions
 full_teams = pd.merge(home_teams, away_teams, on=['id', 'date']).reset_index(drop=True)
 
+# Evaluation metric - Accuracy, because the classes (H/D/A) are fairly balanced
 def assign_result(x):
     if x == 'W':
         return 'H'
@@ -342,9 +307,9 @@ for i in range(len(full_teams)):
 
 
 # MODEL BUILDING
+# Ensure categorical columns are one-hot encoded (they are either 0 or 1, and don't contain strings"
+# I do this because models do not handle string categories
 
-# Make sure categorical columns are one-hot encoded (this means they only contain 1 or 0). This is because
-# models cant deal with string categories
 categorical_cols = ['attacking_strength_l5_x', 'defensive_strength_l5_x',
                     'attacking_strength_l5_y', 'defensive_strength_l5_y']
 categorical_dummies = pd.get_dummies(full_teams[categorical_cols])
@@ -367,8 +332,7 @@ full_teams = full_teams.dropna()
 X = full_teams[features]
 y = full_teams['final_result']
 
-# Scale the data (also known as Standardization). This makes the data have a mean of 0 and a
-# standard deviation of 1. This is required by some models, like linear models and neural networks
+# Scale the data
 scaler = sklearn.preprocessing.StandardScaler()
 full_teams[features] = scaler.fit_transform(full_teams[features])
 
@@ -385,14 +349,6 @@ from sklearn.metrics import accuracy_score
 # Linear model
 # Random forest
 # XGBoost
-
-# Evaluation metric - Accuracy, because the classes (H/D/A) are fairly balanced
-
-# Compare the models against eachother, but also against a baseline. The baseline is the
-# accuracy you could get without a model. The best baseline for this would be the accuracy you would
-# get if you selected the home team every time.
-
-# Optional: You could also create another baseline which is betting on the favourite.
 
 # Train each model, evaluate it on a test set, using balanced_accuracy_score
 
@@ -420,10 +376,17 @@ for model in [('support_vector_machine', svc_classifier), ('random_forest', rf_c
 
 # TODO: Compare the performance of each model and see which is the best
 
-# Create a baseline
-baseline_performance = accuracy_score(y_test, ['H']*len(y_test))  # Performance if we picked home every time
+# Creating a baseline
+# Baseline performance is set to the performance given for if we picked home team to win every time
+baseline_performance = accuracy_score(y_test, ['H']*len(y_test))
 
-# One good comparison is model_performance_against_baseline
+# Using model_performance_against_baseline to compare the model performance to the baseline
 performance_vs_baseline = model_performance['support_vector_machine']['performance']/baseline_performance-1
 # This tells you how much better the model is than the baseline as a %
 print(f"The SVM model beats the baseline by {round(performance_vs_baseline, 4)}%")
+performance_vs_baseline = model_performance['random_forest']['performance']/baseline_performance-1
+# This tells you how much better the model is than the baseline as a %
+print(f"The RandomForest model beats the baseline by {round(performance_vs_baseline, 4)}%")
+performance_vs_baseline = model_performance['xgboost']['performance']/baseline_performance-1
+# This tells you how much better the model is than the baseline as a %
+print(f"The XGBOOST model beats the baseline by {round(performance_vs_baseline, 4)}%")
